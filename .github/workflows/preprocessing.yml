@@ -1,0 +1,40 @@
+name: Preprocessing Automation
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:      # bisa dijalankan manual dari tab Actions
+
+permissions:
+  contents: write         # agar bisa commit dataset hasil preprocessing
+
+jobs:
+  preprocess:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12.7
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.7"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas scikit-learn joblib
+
+      - name: Run automated preprocessing
+        run: |
+          python preprocessing/automate_handokobeni.py heart_raw.csv preprocessing/heart_preprocessing.csv
+
+      - name: Commit processed dataset
+        env:
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          git config --global user.name "$GH_ACTOR"
+          git config --global user.email "$GH_ACTOR@users.noreply.github.com"
+          git add preprocessing/heart_preprocessing.csv preprocessing/preprocessor.joblib
+          git commit -m "auto: update processed dataset [skip ci]" || echo "No changes to commit"
+          git push
